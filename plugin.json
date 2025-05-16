@@ -1,0 +1,11 @@
+{
+  "name": "Insomnia",
+  "author": "Kartik Singh",
+  "flags": ["debug", "_root"],
+  "api_version": 1,
+  "publish": {
+    "tags": ["root"],
+    "description": "Easily change auto dimming/suspend settings in game mode",
+    "image": "https://opengraph.githubassets.com/1/SteamDeckHomebrew/PluginLoader"
+  }
+}
