@@ -62,3 +62,5 @@ deck.env
 # Target directory where the plugin is built
 build
 .aider*
+
+decky-insomnia.zip

@@ -11,6 +11,42 @@ to this pipe sets all screen dimming and auto suspend timeouts to "Disabled". Se
 With this plugin enabled and mpv loaded with the [`dont_sleep.lua`](./mpv_script/dont_sleep.lua) script,
 the timeouts will be disabled when a file is played and restored when playback stops.
 
+## Building
+
+The commands for building and deploying the plugin are described in the [justfile](./justfile). You
+may use [just](https://github.com/casey/just) to execute them or run them manually.
+
+`pnpm` is required for building the plugin. Building the zip package requires the `zip` binary and
+deployment over SSH requires `rsync`.
+
+```bash
+# Create the env file
+cp decky.env.example decky.env
+
+# OPTIONALLY fill it out. This is only required for SSH deployment
+nano decky.env
+
+# Install frontend dependencies
+pnpm i
+
+# Build the plugin. This will build the plugin in the `build` folder. You will then have to
+# copy the contents of this folder to the `~/homebrew/plugins/decky-insomnia` directory on
+# your Steam Deck.
+just build
+
+# OR deploy it to the Steam Deck over SSH
+just deploy
+```
+
+Keep in mind that decky by default makes the plugin directory unwriteable by user to prevent users
+from accidentally breaking plugins. You might have to make this directory writeable in your Deck
+before manually installing any plugins.
+
+```bash
+# ON YOUR STEAM DECK :)
+chmod ug+rwx ~/homebrew/plugins
+```
+
 ## Deemed to be FAQs
 
 ### Why is this needed?

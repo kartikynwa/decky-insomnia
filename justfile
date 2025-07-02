@@ -26,6 +26,9 @@ build: buildfrontend
     mkdir -p build
     cp -r dist LICENSE *.py package.json plugin.json README.md build
 
+buildzip: build
+    cd build && zip -r ../{{plugin_name}}.zip *
+
 deploy: build
     rsync -azpv --delete --chmod=D0755,F0755 build/ "$DECK_HOSTNAME":"homebrew/plugins/{{plugin_name}}"
     echo "$DECK_PASSWORD" | ssh "$DECK_HOSTNAME" sudo -S systemctl restart plugin_loader.service
