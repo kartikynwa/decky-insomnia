@@ -24,7 +24,7 @@ buildfrontend:
 build: buildfrontend
     -rm -rf build
     mkdir -p build
-    cp -r dist LICENSE *.py package.json plugin.json README.md build
+    cp -r mpv_script dist LICENSE *.py package.json plugin.json README.md build
 
 buildzip: build
     cd build && zip -r ../{{plugin_name}}.zip *
