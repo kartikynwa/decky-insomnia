@@ -30,33 +30,85 @@ function toast(message: string) {
 enum Timeout {
   BatteryDim = 1,
   AcDim,
-  BatterySuspend,
+  BatterySuspend = 24003,
   AcSuspend,
 }
 
-// Taken from https://github.com/xfangfang/DeckyInhibitScreenSaver
-function generateDisplaySettingProtobuf(displaySetting: Timeout, value: number) {
-  let buffer = new ArrayBuffer(5);
-  let view = new DataView(buffer);
-  view.setUint8(0, displaySetting << 3 | 5);
-  view.setFloat32(1, value, true);
-  let binary = '';
-  let bytes = new Uint8Array(buffer);
-  let len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
+// LLM generated
+/**
+ * Encodes a key-value pair into a Protobuf Base64 string.
+ * Supports int32 and float types.
+ * 
+ * @param {number} key - The field number (e.g., 24004)
+ * @param {number} value - The number to encode
+ * @param {string} type - 'int' (for int32) or 'float' (for float)
+ * @returns {string} - Base64 encoded protobuf message
+ */
+function generateProtobufMessage(key, value, type = 'int') {
+  const bytes = [];
+
+  // Helper: Write Varint (Used for Tags and Int Values)
+  // Writes 7 bits at a time, Little Endian order
+  const writeVarint = (val) => {
+    let n = BigInt(val);
+    while (n > 127n) {
+      bytes.push(Number((n & 0x7Fn) | 0x80n));
+      n >>= 7n;
+    }
+    bytes.push(Number(n));
+  };
+
+  if (type === 'float') {
+    // --- FLOAT ENCODING ---
+    // 1. Encode Tag
+    // Wire Type for 32-bit (float) is 5
+    const wireType = 5;
+    const tag = (key << 3) | wireType;
+    writeVarint(tag);
+
+    // 2. Encode Value (Fixed 4 bytes, Little Endian)
+    const buffer = new ArrayBuffer(4);
+    const view = new DataView(buffer);
+    // setFloat32(offset, value, isLittleEndian)
+    view.setFloat32(0, value, true); 
+
+    // Extract bytes
+    for (let i = 0; i < 4; i++) {
+      bytes.push(view.getUint8(i));
+    }
+
+  } else {
+    // --- INT ENCODING ---
+    // 1. Encode Tag
+    // Wire Type for Varint (int32) is 0
+    const wireType = 0;
+    const tag = (key << 3) | wireType;
+    writeVarint(tag);
+
+    // 2. Encode Value (Varint)
+    writeVarint(value);
   }
-  return binary;
+
+  // --- Convert to Base64 ---
+  return String.fromCharCode(...bytes);
 }
 
+// Steam seems to be using two different ways of updating settings at the moment.
+// Messages of type CMsgSystemManagerSettings are sent to SteamClient.System.UpdateSettings.
+// Messages of type CMsgCLientSettings are sent to SteamClient.Settings.SetSetting.
+// https://github.com/SteamDatabase/Protobufs/blob/2a9529a/webui/common.proto#L1093
+
 const DisableTimeouts = async () => {
-  const G = generateDisplaySettingProtobuf;
-  const displaySettings = window.btoa(
-    G(Timeout.BatteryDim, 0)
-    + G(Timeout.AcDim, 0)
-    + G(Timeout.BatterySuspend, 0)
-    + G(Timeout.AcSuspend, 0)
-  )
+  const G = generateProtobufMessage;
+  let displaySettings = window.btoa(
+    G(Timeout.BatterySuspend, 0, 'int')
+    + G(Timeout.AcSuspend, 0, 'int')
+  );
+  await SteamClient.Settings.SetSetting(displaySettings);
+  displaySettings = window.btoa(
+    G(Timeout.BatteryDim, 0, 'float')
+    + G(Timeout.AcDim, 0, 'float')
+  );
   let response = await SteamClient.System.UpdateSettings(displaySettings);
   if (response.result == 1) {
     toast("Timeouts disabled");
@@ -67,13 +119,16 @@ const DisableTimeouts = async () => {
 
 const RestoreTimeouts = async () => {
   const settings = await Backend.getSettings();
-  const G = generateDisplaySettingProtobuf;
-  const displaySettings = window.btoa(
-    G(Timeout.BatteryDim, settings.bat_dim_timeout)
-    + G(Timeout.AcDim, settings.ac_dim_timeout)
-    + G(Timeout.BatterySuspend, settings.bat_suspend_timeout)
-    + G(Timeout.AcSuspend, settings.ac_suspend_timeout)
-  )
+  const G = generateProtobufMessage;
+  let displaySettings = window.btoa(
+    G(Timeout.BatterySuspend, settings.bat_suspend_timeout, 'int')
+    + G(Timeout.AcSuspend, settings.ac_suspend_timeout, 'int')
+  );
+  SteamClient.Settings.SetSetting(displaySettings);
+  displaySettings = window.btoa(
+    G(Timeout.BatteryDim, settings.bat_dim_timeout, 'float')
+    + G(Timeout.AcDim, settings.ac_dim_timeout, 'float')
+  );
   let response = await SteamClient.System.UpdateSettings(displaySettings);
   if (response.result == 1) {
     toast("Timeouts restored");
