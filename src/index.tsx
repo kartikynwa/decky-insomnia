@@ -34,22 +34,22 @@ enum Timeout {
   AcSuspend,
 }
 
+enum WireType {
+  Int32 = 0,
+  Float = 5,
+}
+
 // LLM generated
 /**
  * Encodes a key-value pair into a Protobuf Base64 string.
  * Supports int32 and float types.
- * 
- * @param {number} key - The field number (e.g., 24004)
- * @param {number} value - The number to encode
- * @param {string} type - 'int' (for int32) or 'float' (for float)
- * @returns {string} - Base64 encoded protobuf message
  */
-function generateProtobufMessage(key, value, type = 'int') {
+function generateProtobufMessage(key: number, value: number, wireType: WireType): string {
   const bytes = [];
 
   // Helper: Write Varint (Used for Tags and Int Values)
   // Writes 7 bits at a time, Little Endian order
-  const writeVarint = (val) => {
+  const writeVarint = (val: number) => {
     let n = BigInt(val);
     while (n > 127n) {
       bytes.push(Number((n & 0x7Fn) | 0x80n));
@@ -58,11 +58,10 @@ function generateProtobufMessage(key, value, type = 'int') {
     bytes.push(Number(n));
   };
 
-  if (type === 'float') {
+  if (wireType === WireType.Float) {
     // --- FLOAT ENCODING ---
     // 1. Encode Tag
     // Wire Type for 32-bit (float) is 5
-    const wireType = 5;
     const tag = (key << 3) | wireType;
     writeVarint(tag);
 
@@ -81,7 +80,6 @@ function generateProtobufMessage(key, value, type = 'int') {
     // --- INT ENCODING ---
     // 1. Encode Tag
     // Wire Type for Varint (int32) is 0
-    const wireType = 0;
     const tag = (key << 3) | wireType;
     writeVarint(tag);
 
@@ -89,7 +87,6 @@ function generateProtobufMessage(key, value, type = 'int') {
     writeVarint(value);
   }
 
-  // --- Convert to Base64 ---
   return String.fromCharCode(...bytes);
 }
 
@@ -101,13 +98,13 @@ function generateProtobufMessage(key, value, type = 'int') {
 const DisableTimeouts = async () => {
   const G = generateProtobufMessage;
   let displaySettings = window.btoa(
-    G(Timeout.BatterySuspend, 0, 'int')
-    + G(Timeout.AcSuspend, 0, 'int')
+    G(Timeout.BatterySuspend, 0, WireType.Int32)
+    + G(Timeout.AcSuspend, 0, WireType.Int32)
   );
   await SteamClient.Settings.SetSetting(displaySettings);
   displaySettings = window.btoa(
-    G(Timeout.BatteryDim, 0, 'float')
-    + G(Timeout.AcDim, 0, 'float')
+    G(Timeout.BatteryDim, 0, WireType.Float)
+    + G(Timeout.AcDim, 0, WireType.Float)
   );
   let response = await SteamClient.System.UpdateSettings(displaySettings);
   if (response.result == 1) {
@@ -121,13 +118,13 @@ const RestoreTimeouts = async () => {
   const settings = await Backend.getSettings();
   const G = generateProtobufMessage;
   let displaySettings = window.btoa(
-    G(Timeout.BatterySuspend, settings.bat_suspend_timeout, 'int')
-    + G(Timeout.AcSuspend, settings.ac_suspend_timeout, 'int')
+    G(Timeout.BatterySuspend, settings.bat_suspend_timeout, WireType.Int32)
+    + G(Timeout.AcSuspend, settings.ac_suspend_timeout, WireType.Int32)
   );
   SteamClient.Settings.SetSetting(displaySettings);
   displaySettings = window.btoa(
-    G(Timeout.BatteryDim, settings.bat_dim_timeout, 'float')
-    + G(Timeout.AcDim, settings.ac_dim_timeout, 'float')
+    G(Timeout.BatteryDim, settings.bat_dim_timeout, WireType.Float)
+    + G(Timeout.AcDim, settings.ac_dim_timeout, WireType.Float)
   );
   let response = await SteamClient.System.UpdateSettings(displaySettings);
   if (response.result == 1) {

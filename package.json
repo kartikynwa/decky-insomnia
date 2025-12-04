@@ -1,6 +1,6 @@
 {
   "name": "decky-insomnia",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Decky plugin that lets disable/restoring screen dimming and suspend timeouts programmatically",
   "type": "module",
   "scripts": {
